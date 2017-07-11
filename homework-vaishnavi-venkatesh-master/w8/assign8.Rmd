@@ -1,0 +1,202 @@
+---
+title: "assignment_8"
+author: "Vaishnavi Venkatesh"
+date: "July 10, 2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#question1
+library(rvest)
+library(stringr)
+library(dplyr)
+library(purrr)
+page <- read_html("https://www.yelp.com/search?find_desc=burgers&start=0&l=Boston,MA")
+# list the children of the <html> element (the whole page)
+html_children(page)
+## {xml_nodeset (2)}
+## [1] <head>\n<script> window.yPageStart = new Date().getTime() ...
+## [2] <body id="yelp_main_body" class="jquery country-us logged-out">\n\n ...
+# get the root of the actual html body
+root <- html_node(page, 'body')
+
+children <- html_children(html_children(page)[2])
+children
+
+name<- html_name(children)
+name
+length(children)
+html_attr(children, 'id')
+
+#The css selector to select restaurants that are advertisements
+#.yloca-search-result:nth-child(1) span
+```
+
+```{r}
+#question2
+library(rvest)
+library(stringr)
+library(dplyr)
+library(purrr)
+get_yelp_sr_one_page <- function(keyword, loc, page =x) {
+  yelp_url <- 'https://www.yelp.com/search?find_desc=%s&find_loc=%s&start=%s'
+  page1 = (page-1)*10;
+  yelp_url <- sprintf(yelp_url, URLencode(keyword), URLencode(loc), page1)
+  yelpsr <- read_html(yelp_url)
+  items <- yelpsr %>%
+    html_nodes("li.regular-search-result")
+  links <- items %>% html_nodes("a.biz-name")
+  names <- links %>% html_text(trim=T)
+  urls <- links %>%
+    html_attr("href") %>%
+    str_replace("\\?osq=.*", "")
+  pricelevels <- items %>% 
+    html_nodes(".business-attribute.price-range") %>% 
+    html_text(trim=T) %>%
+    str_count()
+  secondary_attrs <- items %>%
+    html_nodes('.secondary-attributes') %>%
+    purrr::map(function(item) {
+      tibble(
+        neighborhood = item %>% 
+          html_node('.neighborhood-str-list') %>% 
+          html_text(trim=T),
+        address = item %>% 
+          html_node('address') %>% 
+          html_text(trim=T),
+        phone = item %>% 
+          html_node('.biz-phone') %>% 
+          html_text(trim=T)
+      )
+    }) %>%
+    bind_rows()
+  tibble(
+    name = names,
+    url = urls,
+    price = pricelevels
+  ) %>% 
+    cbind(secondary_attrs) 
+}
+get_yelp_sr_one_page("Burgers", "Boston, MA", page = 1) %>% 
+  head(5) %>%
+  select(name, url, price, phone, address) %>% 
+  knitr::kable()
+```
+
+```{r}
+#question3
+library(rvest)
+library(stringr)
+library(dplyr)
+library(purrr)
+get_yelp_sr <- function(keyword, loc, page =x) {
+  yelp_url <- 'https://www.yelp.com/search?find_desc=%s&find_loc=%s&start=%s'
+  page1 = (page-1)*10;
+  yelp_url <- sprintf(yelp_url, URLencode(keyword), URLencode(loc), page1)
+  yelpsr <- read_html(yelp_url)
+  items <- yelpsr %>%
+    html_nodes("li.regular-search-result")
+  links <- items %>% html_nodes("a.biz-name")
+  names <- links %>% html_text(trim=T)
+  urls <- links %>%
+    html_attr("href") %>%
+    str_replace("\\?osq=.*", "")
+  pricelevels <- items %>% 
+    html_nodes(".business-attribute.price-range") %>% 
+    html_text(trim=T) %>%
+    str_count()
+  secondary_attrs <- items %>%
+    html_nodes('.secondary-attributes') %>%
+    purrr::map(function(item) {
+      tibble(
+        neighborhood = item %>% 
+          html_node('.neighborhood-str-list') %>% 
+          html_text(trim=T),
+        address = item %>% 
+          html_node('address') %>% 
+          html_text(trim=T),
+        phone = item %>% 
+          html_node('.biz-phone') %>% 
+          html_text(trim=T)
+      )
+    }) %>%
+    bind_rows()
+  tibble(
+    name = names,
+    url = urls,
+    price = pricelevels
+  ) %>% 
+    cbind(secondary_attrs) 
+}
+x <- NULL
+page = 10
+for( i in 1:page){
+  final<- get_yelp_sr("Burgers", "Boston, MA", page =i)
+ x <-  rbind(x, final)
+}
+
+
+
+```
+```{r}
+#question 4
+library(rvest)
+library(stringr)
+library(dplyr)
+library(purrr)
+get_yelp_sr <- function(keyword, loc, page =x) {
+  yelp_url <- 'https://www.yelp.com/search?find_desc=%s&find_loc=%s&start=%s'
+  page1 = (page-1)*10;
+  yelp_url <- sprintf(yelp_url, URLencode(keyword), URLencode(loc), page1)
+  yelpsr <- read_html(yelp_url)
+  items <- yelpsr %>%
+    html_nodes("li.regular-search-result")
+  links <- items %>% html_nodes("a.biz-name")
+  names <- links %>% html_text(trim=T)
+  urls <- links %>%
+    html_attr("href") %>%
+    str_replace("\\?osq=.*", "")
+  pricelevels <- items %>% 
+    html_nodes(".business-attribute.price-range") %>% 
+    html_text(trim=T) %>%
+    str_count()
+  secondary_attrs <- items %>%
+    html_nodes('.secondary-attributes') %>%
+    purrr::map(function(item) {
+      tibble(
+        neighborhood = item %>% 
+          html_node('.neighborhood-str-list') %>% 
+          html_text(trim=T),
+        address = item %>% 
+          html_node('address') %>% 
+          html_text(trim=T),
+        phone = item %>% 
+          html_node('.biz-phone') %>% 
+          html_text(trim=T)
+      )
+    }) %>%
+    bind_rows()
+  tibble(
+    name = names,
+    url = urls,
+    price = pricelevels
+  ) %>% 
+    cbind(secondary_attrs) 
+}
+x <- NULL
+page = 10
+for( i in 1:page){
+  Sys.sleep(1)
+  final<- get_yelp_sr("Burgers", "Boston, MA", page =i)
+ x <-  rbind(x, final)
+}
+
+
+
+```
